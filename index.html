@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CEDEARs — Compra Fuerte</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:   #07101d;
+  --surf: #0c1825;
+  --card: #111f2e;
+  --brd:  #1a2d3e;
+  --brd2: #253d52;
+  --g:    #00e5b0;
+  --g2:   #00b589;
+  --r:    #ff4555;
+  --b:    #4da6ff;
+  --amb:  #ffb700;
+  --pur:  #a78bfa;
+  --txt:  #dde9f5;
+  --txt2: #6f90aa;
+  --txt3: #364d62;
+  --fn:   'Segoe UI', system-ui, sans-serif;
+}
+
+body { font-family:var(--fn); background:var(--bg); color:var(--txt); min-height:100vh; }
+
+/* ── HEADER ───────────────────────────────────── */
+.hdr {
+  background:linear-gradient(180deg,#081522,#0c1f30);
+  border-bottom:1px solid var(--brd);
+  height:60px; padding:0 28px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:200;
+}
+.hdr-brand { display:flex; align-items:center; gap:14px; }
+.hdr-ico {
+  width:36px; height:36px; border-radius:10px; flex-shrink:0;
+  background:linear-gradient(135deg,var(--g),var(--b));
+  display:flex; align-items:center; justify-content:center; font-size:18px;
+}
+.hdr-t1 { font-size:17px; font-weight:800; letter-spacing:-.4px; }
+.hdr-t2 { font-size:11px; color:var(--txt2); margin-top:1px; }
+
+/* ── MARKET STATUS BAR ────────────────────────── */
+.mkt-bar {
+  background:rgba(8,18,30,.95);
+  border-bottom:1px solid var(--brd);
+  padding:0 28px;
+  height:42px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  position:sticky; top:60px; z-index:199;
+  backdrop-filter:blur(10px);
+}
+.mkt-state {
+  display:flex; align-items:center; gap:8px;
+  font-size:12px; font-weight:700; flex-shrink:0;
+}
+.mkt-dot {
+  width:9px; height:9px; border-radius:50%;
+}
+.mkt-dot.open   { background:var(--g);  animation:mktPulse 1.8s ease-in-out infinite; }
+.mkt-dot.ext    { background:var(--amb); }
+.mkt-dot.closed { background:var(--txt3); }
+@keyframes mktPulse {
+  0%,100%{ box-shadow:0 0 0 0 rgba(0,229,176,.5); }
+  50%{ box-shadow:0 0 0 5px rgba(0,229,176,0); }
+}
+.mkt-label.open   { color:var(--g); }
+.mkt-label.ext    { color:var(--amb); }
+.mkt-label.closed { color:var(--txt3); }
+
+.mkt-meta {
+  display:flex; align-items:center; gap:20px; flex:1;
+  font-size:11px; color:var(--txt3);
+  overflow:hidden;
+}
+.mkt-meta-item { display:flex; align-items:center; gap:5px; white-space:nowrap; }
+.mkt-meta-val  { color:var(--txt2); font-weight:600; }
+
+.mkt-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+
+.refresh-btn {
+  background:rgba(77,166,255,.1); border:1px solid rgba(77,166,255,.25);
+  color:var(--b); padding:5px 12px; border-radius:8px;
+  font-size:11px; font-weight:700; cursor:pointer; transition:all .2s;
+  display:flex; align-items:center; gap:5px;
+}
+.refresh-btn:hover { background:rgba(77,166,255,.18); }
+.refresh-btn.spinning .ri { animation:spin .8s linear infinite; }
+@keyframes spin { to{ transform:rotate(360deg); } }
+
+.mkt-update-time { font-size:11px; color:var(--txt3); white-space:nowrap; }
+
+/* ── FLASH ANIMATIONS ─────────────────────────── */
+@keyframes flashUp {
+  0%   { box-shadow:0 0 0 0 rgba(0,229,176,0);   background:rgba(0,229,176,0); }
+  15%  { box-shadow:0 0 20px 4px rgba(0,229,176,.2); background:rgba(0,229,176,.06); }
+  100% { box-shadow:0 0 0 0 rgba(0,229,176,0);   background:rgba(0,229,176,0); }
+}
+@keyframes flashDn {
+  0%   { box-shadow:0 0 0 0 rgba(255,69,85,0);   background:rgba(255,69,85,0); }
+  15%  { box-shadow:0 0 20px 4px rgba(255,69,85,.2); background:rgba(255,69,85,.07); }
+  100% { box-shadow:0 0 0 0 rgba(255,69,85,0);   background:rgba(255,69,85,0); }
+}
+.flash-up { animation:flashUp 2s ease forwards; }
+.flash-dn { animation:flashDn 2s ease forwards; }
+
+/* ── SHIMMER ──────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position:-400px 0; }
+  100% { background-position:400px 0; }
+}
+.shimmer {
+  background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.04) 50%,rgba(255,255,255,0) 100%);
+  background-size:400px 100%;
+  animation:shimmer 1.4s infinite;
+}
+
+/* ── MAIN ─────────────────────────────────────── */
+.main { max-width:1400px; margin:0 auto; padding:24px; }
+
+/* ── SECTION LABEL ────────────────────────────── */
+.sec-lbl {
+  display:flex; align-items:center; gap:9px;
+  font-size:10.5px; font-weight:700; color:var(--txt3);
+  text-transform:uppercase; letter-spacing:1.6px; margin-bottom:14px;
+}
+.sec-lbl::after { content:''; flex:1; height:1px; background:var(--brd); }
+
+/* ── METHODOLOGY ──────────────────────────────── */
+.meth {
+  background:linear-gradient(135deg,rgba(77,166,255,.05),rgba(0,229,176,.03));
+  border:1px solid rgba(77,166,255,.13); border-radius:14px;
+  margin-bottom:24px; overflow:hidden;
+}
+.meth-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:15px 22px; cursor:pointer; user-select:none;
+}
+.meth-hdr-l { display:flex; align-items:center; gap:9px; font-size:14px; font-weight:700; color:var(--b); }
+.meth-arr { font-size:11px; color:var(--txt2); transition:transform .3s; }
+.meth-arr.open { transform:rotate(180deg); }
+.meth-body { display:none; padding:0 22px 22px; border-top:1px solid var(--brd); }
+.meth-body.open { display:block; }
+.meth-desc { font-size:13px; color:var(--txt2); line-height:1.65; margin:14px 0 16px; }
+.crit-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(195px,1fr)); gap:10px; margin-bottom:16px; }
+.crit-c { background:rgba(0,229,176,.04); border:1px solid rgba(0,229,176,.14); border-radius:10px; padding:12px 14px; }
+.crit-c-name { font-size:12px; font-weight:700; color:var(--g); margin-bottom:5px; }
+.crit-c-desc { font-size:11px; color:var(--txt2); line-height:1.5; }
+.status-legend { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
+.leg-item { display:flex; align-items:center; gap:8px; background:rgba(7,16,29,.7); border:1px solid var(--brd); border-radius:8px; padding:9px 13px; font-size:12px; color:var(--txt2); }
+.leg-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* ── ALERTS ───────────────────────────────────── */
+.alerts { margin-bottom:24px; }
+.alert-row {
+  background:linear-gradient(135deg,rgba(255,69,85,.07),rgba(255,183,0,.03));
+  border:1px solid rgba(255,69,85,.25); border-radius:13px;
+  padding:16px 18px; display:flex; align-items:flex-start; gap:14px;
+  margin-bottom:10px; animation:abrd 4s ease-in-out infinite;
+}
+@keyframes abrd { 0%,100%{ border-color:rgba(255,69,85,.25); } 50%{ border-color:rgba(255,69,85,.5); } }
+.alert-ico { font-size:22px; flex-shrink:0; padding-top:2px; }
+.alert-ttl { font-size:14px; font-weight:700; color:var(--amb); display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+.alert-body { font-size:13px; color:var(--txt2); line-height:1.55; }
+.tag { padding:2px 9px; border-radius:12px; font-size:11px; font-weight:700; }
+.tag-r  { background:rgba(255,69,85,.14);  border:1px solid rgba(255,69,85,.3);  color:var(--r); }
+.tag-g  { background:rgba(0,229,176,.1);   border:1px solid rgba(0,229,176,.28); color:var(--g); }
+.tag-b  { background:rgba(77,166,255,.1);  border:1px solid rgba(77,166,255,.25); color:var(--b); }
+.tag-a  { background:rgba(255,183,0,.12);  border:1px solid rgba(255,183,0,.28); color:var(--amb); }
+.tag-p  { background:rgba(167,139,250,.1); border:1px solid rgba(167,139,250,.25); color:var(--pur); }
+.no-alerts { background:rgba(0,229,176,.04); border:1px solid rgba(0,229,176,.14); border-radius:12px; padding:14px 18px; font-size:13px; color:var(--txt2); display:flex; align-items:center; gap:9px; }
+
+/* ── PORTFOLIO OVERVIEW ───────────────────────── */
+.pf-overview {
+  background:linear-gradient(135deg,var(--card),#0e1e2d);
+  border:1px solid var(--brd); border-radius:16px;
+  padding:20px 24px; margin-bottom:24px;
+  display:flex; gap:20px; align-items:center; flex-wrap:wrap;
+}
+.pf-ov-info { flex:1; min-width:200px; }
+.pf-ov-title { font-size:20px; font-weight:800; letter-spacing:-.5px; margin-bottom:5px; }
+.pf-ov-sub { font-size:13px; color:var(--txt2); line-height:1.5; }
+.pf-ov-stats { display:flex; gap:10px; flex-wrap:wrap; }
+.pf-stat { background:rgba(7,16,29,.6); border:1px solid var(--brd); border-radius:10px; padding:12px 16px; text-align:center; min-width:105px; }
+.pf-stat-val { font-size:22px; font-weight:800; line-height:1; margin-bottom:4px; }
+.pf-stat-lbl { font-size:11px; color:var(--txt3); text-transform:uppercase; letter-spacing:.5px; }
+.col-g { color:var(--g); } .col-r { color:var(--r); } .col-b { color:var(--b); }
+
+/* ── WEEK SECTION ─────────────────────────────── */
+.week-section { margin-bottom:34px; }
+.week-hdr {
+  background:linear-gradient(135deg,rgba(77,166,255,.07),rgba(0,229,176,.04));
+  border:1px solid rgba(77,166,255,.16); border-radius:13px;
+  padding:15px 22px; margin-bottom:18px;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+}
+.week-num-badge {
+  background:linear-gradient(135deg,var(--b),var(--g));
+  color:#07101d; padding:4px 12px; border-radius:20px;
+  font-size:12px; font-weight:900; letter-spacing:.5px; flex-shrink:0;
+}
+.week-hdr-date { font-size:15px; font-weight:700; margin-bottom:2px; }
+.week-hdr-sub  { font-size:12px; color:var(--txt2); }
+.week-hdr-tags { display:flex; gap:8px; flex-wrap:wrap; margin-left:auto; }
+.sub-lbl { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.4px; margin:0 0 14px; }
+.sub-lbl::after { content:''; flex:1; height:1px; }
+.sub-lbl.new-picks { color:var(--g); }
+.sub-lbl.new-picks::after { background:rgba(0,229,176,.2); }
+.sub-lbl.reeval { color:var(--b); margin-top:24px; }
+.sub-lbl.reeval::after { background:rgba(77,166,255,.2); }
+
+/* ── STOCKS GRID ──────────────────────────────── */
+.sgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:18px; }
+
+/* ── STOCK CARD ───────────────────────────────── */
+.scard {
+  background:var(--card); border-radius:14px; overflow:hidden;
+  transition:transform .25s, box-shadow .25s, border-color .25s; position:relative;
+}
+.scard.st-buy  { border:1px solid rgba(0,229,176,.35); }
+.scard.st-hold { border:1px solid rgba(77,166,255,.3); }
+.scard.st-sell { border:1px solid rgba(255,69,85,.4); }
+.scard:hover   { transform:translateY(-3px); box-shadow:0 14px 45px rgba(0,0,0,.45); }
+.scard.st-buy:hover  { border-color:rgba(0,229,176,.6); }
+.scard.st-hold:hover { border-color:rgba(77,166,255,.55); }
+.scard.st-sell:hover { border-color:rgba(255,69,85,.65); }
+.sc-bar { height:3px; }
+.st-buy  .sc-bar { background:linear-gradient(to right,var(--g),var(--g2)); }
+.st-hold .sc-bar { background:linear-gradient(to right,var(--b),var(--g)); }
+.st-sell .sc-bar { background:linear-gradient(to right,var(--r),var(--amb)); }
+.scard.st-buy::before  { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at top,rgba(0,229,176,.04),transparent 65%); pointer-events:none; }
+.scard.st-hold::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at top,rgba(77,166,255,.04),transparent 65%); pointer-events:none; }
+.scard.st-sell::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at top,rgba(255,69,85,.05),transparent 65%); pointer-events:none; }
+.sc-bd { padding:18px; position:relative; }
+
+/* status badge */
+.sc-status {
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  width:100%; padding:7px 0; border-radius:8px; margin-bottom:14px;
+  font-size:13px; font-weight:800; letter-spacing:.4px;
+}
+.sc-status.buy  { background:rgba(0,229,176,.12);  color:var(--g);  border:1px solid rgba(0,229,176,.28); }
+.sc-status.hold { background:rgba(77,166,255,.1);  color:var(--b);  border:1px solid rgba(77,166,255,.25); }
+.sc-status.sell { background:rgba(255,69,85,.1);   color:var(--r);  border:1px solid rgba(255,69,85,.28); }
+
+/* card header */
+.sc-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.sc-id  { display:flex; align-items:center; gap:11px; }
+.sc-logo { width:42px; height:42px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; }
+.sc-nm h3 { font-size:15px; font-weight:800; line-height:1; margin-bottom:3px; display:flex; align-items:center; gap:7px; }
+.sc-nm span { font-size:11px; color:var(--txt2); }
+.week-tag { background:rgba(77,166,255,.1); border:1px solid rgba(77,166,255,.22); color:var(--b); padding:3px 9px; border-radius:10px; font-size:10px; font-weight:700; flex-shrink:0; }
+.sc-since { font-size:10px; color:var(--txt3); margin-bottom:10px; }
+
+/* ── LIVE PRICE BOX ───────────────────────────── */
+.live-box {
+  background:rgba(7,16,29,.7);
+  border:1px solid var(--brd);
+  border-radius:10px; padding:11px 13px; margin-bottom:11px;
+  transition:border-color .3s;
+}
+.live-box.updating { border-color:rgba(77,166,255,.3); }
+
+.live-top {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:4px;
+}
+.live-price-usd {
+  font-size:22px; font-weight:800; letter-spacing:-.3px; line-height:1;
+}
+.live-chg {
+  font-size:14px; font-weight:700;
+}
+.live-chg.cg { color:var(--g); }
+.live-chg.cr { color:var(--r); }
+.live-chg.cn { color:var(--txt3); }
+
+.live-bottom {
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;
+}
+.live-ars { font-size:11px; color:var(--txt2); }
+.live-prev { font-size:10px; color:var(--txt3); }
+
+.live-indicator {
+  display:flex; align-items:center; gap:5px;
+  font-size:10px; font-weight:700; margin-bottom:5px;
+}
+.live-dot {
+  width:7px; height:7px; border-radius:50%; flex-shrink:0;
+}
+.live-dot.open   { background:var(--g);  animation:mktPulse 1.8s ease-in-out infinite; }
+.live-dot.ext    { background:var(--amb); }
+.live-dot.closed { background:var(--txt3); }
+.live-lbl.open   { color:var(--g); }
+.live-lbl.ext    { color:var(--amb); }
+.live-lbl.closed { color:var(--txt3); }
+
+/* skeleton loading */
+.skel {
+  background:linear-gradient(90deg,rgba(255,255,255,.03) 25%,rgba(255,255,255,.07) 50%,rgba(255,255,255,.03) 75%);
+  background-size:400px 100%;
+  animation:shimmer 1.4s infinite;
+  border-radius:4px; display:inline-block;
+}
+
+/* target / stop */
+.sc-targets { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:11px; }
+.sc-target-box { border-radius:8px; padding:8px 10px; }
+.sc-target-box.tp { background:rgba(0,229,176,.07); border:1px solid rgba(0,229,176,.18); }
+.sc-target-box.sl { background:rgba(255,69,85,.06); border:1px solid rgba(255,69,85,.18); }
+.sc-target-box.na { background:rgba(77,166,255,.05); border:1px solid rgba(77,166,255,.15); }
+.sc-tgt-lbl { font-size:9px; color:var(--txt3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px; }
+.sc-tgt-val { font-size:13px; font-weight:800; }
+.sc-tgt-val.g { color:var(--g); } .sc-tgt-val.r { color:var(--r); } .sc-tgt-val.b { color:var(--b); }
+
+/* perf row — 3 cols (Semana / Mes / Año), "Hoy" ya está en live-box */
+.sc-perf { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:11px; }
+.pc { background:rgba(7,16,29,.65); border-radius:8px; padding:7px 4px; text-align:center; }
+.pc-l { font-size:9px; color:var(--txt3); text-transform:uppercase; margin-bottom:3px; }
+.pc-v { font-size:13px; font-weight:800; }
+.cg { color:var(--g); } .cr { color:var(--r); } .ca { color:var(--amb); } .cn { color:var(--txt2); } .cna { color:var(--txt3); font-size:11px; }
+
+/* sparkline */
+.spark { height:44px; margin-bottom:11px; }
+
+/* indicators */
+.sc-inds { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:11px; }
+.ipill { background:rgba(7,16,29,.8); border:1px solid var(--brd); border-radius:6px; padding:4px 8px; font-size:10px; display:flex; align-items:center; gap:4px; }
+.il { color:var(--txt3); } .iv { font-weight:700; }
+.iv.g { color:var(--g); } .iv.r { color:var(--r); } .iv.a { color:var(--amb); } .iv.b { color:var(--b); }
+
+/* reason */
+.sc-reason { background:rgba(7,16,29,.55); padding:10px 12px; border-radius:8px; font-size:12px; color:var(--txt2); line-height:1.6; border-left:3px solid transparent; }
+.sc-reason.buy  { border-left-color:var(--g); }
+.sc-reason.hold { border-left-color:var(--b); }
+.sc-reason.sell { border-left-color:var(--r); }
+
+/* next update */
+.next-update { background:rgba(77,166,255,.05); border:1px solid rgba(77,166,255,.14); border-radius:13px; padding:15px 22px; margin-top:6px; display:flex; align-items:center; gap:12px; font-size:13px; color:var(--txt2); line-height:1.55; }
+
+/* disclaimer */
+.disclaimer { background:var(--card); border:1px solid var(--brd); border-radius:12px; padding:16px 22px; margin-top:26px; font-size:11px; color:var(--txt3); text-align:center; line-height:1.75; }
+
+/* responsive */
+@media(max-width:700px){
+  .main{ padding:14px; }
+  .mkt-meta { display:none; }
+  .pf-ov-stats{ gap:8px; }
+  .pf-stat{ min-width:85px; padding:10px 12px; }
+  .hdr{ padding:0 16px; }
+  .hdr-t2{ display:none; }
+  .mkt-bar{ padding:0 16px; }
+}
+  </style>
+</head>
+<body>
+
+<!-- ═══ HEADER ════════════════════════════════════════ -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="hdr-ico">📈</div>
+    <div>
+      <div class="hdr-t1">CEDEARs — Compra Fuerte</div>
+      <div class="hdr-t2">Señales de alta convicción · Cocos Capital · IOL · Balanz · PPI</div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ MARKET STATUS BAR ════════════════════════════ -->
+<div class="mkt-bar">
+  <div class="mkt-state">
+    <div class="mkt-dot closed" id="mkt-dot"></div>
+    <span class="mkt-label closed" id="mkt-label">Cargando...</span>
+  </div>
+  <div class="mkt-meta">
+    <div class="mkt-meta-item">NYSE: <span class="mkt-meta-val">10:30–17:00 AR</span></div>
+    <div class="mkt-meta-item" id="mkt-schedule-info"></div>
+    <div class="mkt-meta-item">Próx. refresh: <span class="mkt-meta-val" id="mkt-countdown">—</span></div>
+  </div>
+  <div class="mkt-right">
+    <div class="mkt-update-time" id="mkt-update-time"></div>
+    <button class="refresh-btn" id="refresh-btn" onclick="manualRefresh()">
+      <span class="ri">↻</span> Actualizar
+    </button>
+  </div>
+</div>
+
+<!-- ═══ MAIN ══════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- METHODOLOGY ────────────────────────────────── -->
+  <div class="meth">
+    <div class="meth-hdr" onclick="toggleMeth()">
+      <div class="meth-hdr-l">🔬 Criterios de Señal — ¿Qué es una COMPRA FUERTE?</div>
+      <span class="meth-arr" id="marrow">▼</span>
+    </div>
+    <div class="meth-body" id="mbody">
+      <p class="meth-desc">
+        Una señal de <strong>COMPRA FUERTE</strong> requiere que se cumplan <strong>al menos 5 de 6 criterios técnicos</strong> simultáneamente, más un <strong>catalizador fundamental en los próximos 30 días</strong>. Ratio mínimo Riesgo/Recompensa de <strong>3:1</strong>. Los picks se revisan cada lunes.
+      </p>
+      <div class="crit-grid">
+        <div class="crit-c"><div class="crit-c-name">① RSI (14p): 42–65</div><div class="crit-c-desc">Momentum activo sin sobrecompra. RSI &lt;42 válido para rebotes con otros criterios cumplidos.</div></div>
+        <div class="crit-c"><div class="crit-c-name">② MACD Cruce Alcista</div><div class="crit-c-desc">Cruce del MACD sobre la señal en los últimos 1–5 días. Histograma positivo y creciente.</div></div>
+        <div class="crit-c"><div class="crit-c-name">③ Precio > SMA50</div><div class="crit-c-desc">Tendencia corto plazo positiva. "Golden Cross" (SMA50 > SMA200) suma puntos adicionales.</div></div>
+        <div class="crit-c"><div class="crit-c-name">④ Volumen ≥ +25%</div><div class="crit-c-desc">Volumen 25%+ sobre media 20d. Confirma convicción institucional detrás del movimiento.</div></div>
+        <div class="crit-c"><div class="crit-c-name">⑤ Ratio R/R ≥ 3:1</div><div class="crit-c-desc">Target mínimo 12% en 30 días con stop 4%. Solo donde el upside justifica claramente el riesgo.</div></div>
+        <div class="crit-c"><div class="crit-c-name">⑥ Catalizador &lt;30d</div><div class="crit-c-desc">Earnings, aprobación regulatoria, lanzamiento de producto o evento con impacto directo en precio.</div></div>
+      </div>
+      <div class="status-legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--g)"></div><strong style="color:var(--g)">COMPRA FUERTE</strong> — 5+ criterios, catalizador activo, R/R ≥ 3:1</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--b)"></div><strong style="color:var(--b)">MANTENER</strong> — señal debilitada, sin razón para vender todavía</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--r)"></div><strong style="color:var(--r)">VENTA FUERTE</strong> — ruptura bajista, catalizador negativo o target alcanzado</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTS ─────────────────────────────────────── -->
+  <div class="alerts">
+    <div class="sec-lbl">🚨 Alertas — Cambios de Estado</div>
+    <div class="no-alerts">✅ Sin alertas esta semana. Todas las posiciones activas mantienen señal de COMPRA FUERTE.</div>
+  </div>
+
+  <!-- PORTFOLIO OVERVIEW ──────────────────────────── -->
+  <div id="pf-overview-wrap"></div>
+
+  <!-- WEEKS ──────────────────────────────────────── -->
+  <div id="weeks-wrap"></div>
+
+  <!-- NEXT UPDATE ────────────────────────────────── -->
+  <div class="next-update">
+    📅 <div><strong>Próxima actualización: Lunes 3 de Mayo, 2026.</strong> Se agregarán nuevas señales de COMPRA FUERTE y se re-evaluarán los 5 picks actuales. Si alguno cae a MANTENER o VENTA FUERTE, aparecerá en Alertas con la razón detallada.</div>
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ <strong>Aviso Legal:</strong> Contenido exclusivamente informativo y educativo. No constituye asesoramiento financiero ni recomendación de inversión. Los precios en tiempo real provienen de Yahoo Finance vía proxy público y pueden tener un retraso de 15 min. Precios en ARS son referenciales (CCL ~$1.400). Consultá con un asesor financiero matriculado antes de invertir.
+  </div>
+</main>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════ */
+const CCL = 1400;
+
+/* ═══════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════ */
+const WEEKS = [
+  {
+    num: 1,
+    date: "26 de Abril, 2026",
+    short: "26 Abr",
+    newPicks: [
+      {
+        ticker:"NVDA", name:"NVIDIA Corporation", sector:"Semiconductores / IA",
+        logo:"#76b900", tc:"#fff", price:875.42, target:1022, stop:838, status:"buy",
+        change:{ week:12.4, month:18.7, year:45.2 },
+        inds:[{l:"RSI(14)",v:"58",c:"g"},{l:"MACD",v:"Cruce ↑ D-3",c:"g"},{l:"SMA50",v:"↑ +12%",c:"g"},{l:"Vol.",v:"+45%",c:"g"},{l:"Criterios",v:"6/6 ✓",c:"g"}],
+        reason:"Demanda de chips H200 y Blackwell para data centers de IA en niveles récord; backlog hasta Q3. MACD cruce alcista hace 3 días, histograma creciente. Earnings Q1 el 28 Abr son el catalizador. R/R 3.8:1.",
+        st:0.44, sv:2.2
+      },
+      {
+        ticker:"MELI", name:"MercadoLibre Inc.", sector:"E-commerce / Fintech LatAm",
+        logo:"#f5c400", tc:"#1a1200", price:2134.80, target:2490, stop:2045, status:"buy",
+        change:{ week:6.8, month:15.3, year:28.9 },
+        inds:[{l:"RSI(14)",v:"52",c:"g"},{l:"MACD",v:"Cruce ↑ D-5",c:"g"},{l:"SMA50/200",v:"Golden X",c:"g"},{l:"Vol.",v:"+22%",c:"g"},{l:"Criterios",v:"6/6 ✓",c:"g"}],
+        reason:"Golden Cross confirmado. Mercado Pago TPV +60% YoY. Earnings Q1 el 7 May con alta probabilidad de beat. CEDEAR con leve descuento vs. NYSE al CCL. R/R 4.0:1.",
+        st:0.33, sv:1.8
+      },
+      {
+        ticker:"TSM", name:"Taiwan Semiconductor", sector:"Semiconductores (Fab.)",
+        logo:"#0070c0", tc:"#fff", price:198.60, target:237, stop:190, status:"buy",
+        change:{ week:9.8, month:16.2, year:42.1 },
+        inds:[{l:"RSI(14)",v:"61",c:"g"},{l:"MACD",v:"Alcista ▲",c:"g"},{l:"SMA50",v:"↑ +15%",c:"g"},{l:"Vol.",v:"+38%",c:"g"},{l:"Criterios",v:"6/6 ✓",c:"g"}],
+        reason:"Breakout sobre resistencia de 6 semanas con 138% del volumen promedio. Proveedor exclusivo N3/N2nm para NVDA, AAPL, AMD. Margen bruto 53%. R/R 4.4:1.",
+        st:0.46, sv:2.3
+      },
+      {
+        ticker:"MSFT", name:"Microsoft Corporation", sector:"Software / Cloud / IA",
+        logo:"#00a4ef", tc:"#fff", price:445.20, target:516, stop:426, status:"buy",
+        change:{ week:7.3, month:12.4, year:38.5 },
+        inds:[{l:"RSI(14)",v:"56",c:"g"},{l:"MACD",v:"Cruce ↑ D-2",c:"g"},{l:"SMA50/200",v:"↑ Ambas",c:"g"},{l:"Vol.",v:"+28%",c:"g"},{l:"Criterios",v:"6/6 ✓",c:"g"}],
+        reason:"MACD cruce alcista hace 2 días. Azure +31% YoY impulsado por Copilot. Earnings 30 Abr: consenso EPS USD 3.22 (+18% YoY). R/R 3.6:1.",
+        st:0.36, sv:1.8
+      },
+      {
+        ticker:"ARM", name:"ARM Holdings plc", sector:"Diseño de Chips / IA",
+        logo:"#00accc", tc:"#fff", price:138.90, target:169, stop:133, status:"buy",
+        change:{ week:null, month:null, year:null },
+        inds:[{l:"RSI(14)",v:"54",c:"g"},{l:"MACD",v:"Cruce ↑ D-1",c:"g"},{l:"SMA50",v:"Breakout",c:"g"},{l:"Vol.",v:"+42%",c:"g"},{l:"Criterios",v:"5/6 ✓",c:"g"}],
+        reason:"MACD cruce alcista ayer con 142% del volumen promedio. Breakout sobre USD 132. Royalties +45% YoY; MSFT, AMZN y AAPL usan ARM en chips propios. Earnings 7 May. R/R 4.9:1.",
+        st:0.42, sv:2.5
+      }
+    ],
+    reEvals: []
+  }
+  /* ── SEMANA 2 (agregar el lunes 3 de mayo) ────────────────────────────
+  ,{
+    num: 2, date: "3 de Mayo, 2026", short: "3 May",
+    newPicks: [ ... ],
+    reEvals: [
+      { ticker:"NVDA", ..., status:"buy",  reason:"..." },
+      { ticker:"MELI", ..., status:"hold", reason:"..." },
+      ...
+    ]
+  }
+  ─────────────────────────────────────────────────────────────────────── */
+];
+
+/* ═══════════════════════════════════════════════════
+   MARKET STATE
+═══════════════════════════════════════════════════ */
+function getMarketInfo() {
+  const now = new Date();
+  // Use Intl API — handles DST automatically
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    weekday:'short', hour:'numeric', minute:'2-digit', hour12:false
+  });
+  const parts = fmt.formatToParts(now);
+  const get = type => parts.find(p=>p.type===type)?.value || '';
+  const day = get('weekday');
+  const hour = parseInt(get('hour'));
+  const min  = parseInt(get('minute'));
+  const tot  = hour * 60 + min;
+
+  if (day==='Sat' || day==='Sun') return { state:'CLOSED' };
+  if (tot >= 570  && tot < 960)  return { state:'OPEN', hour, min };   // 9:30–16:00 ET
+  if ((tot >= 240 && tot < 570) || (tot >= 960 && tot < 1200))
+                                  return { state:'EXTENDED', hour, min };
+  return { state:'CLOSED' };
+}
+
+function marketStateLabel(state) {
+  if (state==='OPEN')     return { cls:'open',   text:'🟢 MERCADO ABIERTO', interval:60 };
+  if (state==='EXTENDED') return { cls:'ext',    text:'🟡 PRE/POST MERCADO', interval:300 };
+  return                         { cls:'closed', text:'🔴 MERCADO CERRADO',  interval:600 };
+}
+
+/* ═══════════════════════════════════════════════════
+   PRICE FETCH
+═══════════════════════════════════════════════════ */
+const ALL_TICKERS = [...new Set(
+  WEEKS.flatMap(w => [...w.newPicks, ...w.reEvals].map(s=>s.ticker))
+)];
+
+let lastPrices   = {};
+let fetchTimer   = null;
+let countdownVal = 0;
+
+async function fetchWithTimeout(url, ms=9000) {
+  const ctrl = new AbortController();
+  const tid  = setTimeout(()=>ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal:ctrl.signal });
+    clearTimeout(tid);
+    return r;
+  } catch(e) { clearTimeout(tid); throw e; }
+}
+
+async function fetchPrices() {
+  const symbols = ALL_TICKERS.join(',');
+  const yahooUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketPreviousClose,marketState`;
+
+  // Try allorigins.win
+  try {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
+    const r = await fetchWithTimeout(proxyUrl, 10000);
+    if (r.ok) {
+      const json = await r.json();
+      const data = JSON.parse(json.contents || '{}');
+      const results = data.quoteResponse?.result;
+      if (results?.length) return buildMap(results);
+    }
+  } catch(e) { /* fall through */ }
+
+  // Fallback: corsproxy.io
+  try {
+    const proxyUrl2 = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+    const r = await fetchWithTimeout(proxyUrl2, 10000);
+    if (r.ok) {
+      const data = await r.json();
+      const results = data.quoteResponse?.result;
+      if (results?.length) return buildMap(results);
+    }
+  } catch(e) { /* fall through */ }
+
+  return null;
+}
+
+function buildMap(results) {
+  return results.reduce((acc, q) => {
+    acc[q.symbol] = {
+      price:     q.regularMarketPrice,
+      change:    q.regularMarketChange,
+      changePct: q.regularMarketChangePercent,
+      prevClose: q.regularMarketPreviousClose
+    };
+    return acc;
+  }, {});
+}
+
+/* ═══════════════════════════════════════════════════
+   UI UPDATES
+═══════════════════════════════════════════════════ */
+function fmtUSD(n){ return n != null ? n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'; }
+function fmtARS(n){ return Math.round(n).toLocaleString('es-AR'); }
+
+function updateMarketBar(state) {
+  const info = marketStateLabel(state);
+  const dot  = document.getElementById('mkt-dot');
+  const lbl  = document.getElementById('mkt-label');
+  if (!dot) return;
+  dot.className = `mkt-dot ${info.cls}`;
+  lbl.className = `mkt-label ${info.cls}`;
+  lbl.textContent = info.text;
+
+  const schedEl = document.getElementById('mkt-schedule-info');
+  if (schedEl) {
+    if (state === 'OPEN')     schedEl.innerHTML = 'Cierra: <span class="mkt-meta-val">17:00 AR</span>';
+    else if (state === 'EXTENDED') schedEl.innerHTML = 'Horario extendido';
+    else schedEl.innerHTML = 'Abre mañana: <span class="mkt-meta-val">10:30 AR</span>';
+  }
+}
+
+function updateCardPrice(ticker, q) {
+  const box = document.getElementById(`lb-${ticker}`);
+  if (!box) return;
+  box.classList.remove('updating');
+
+  const priceEl = document.getElementById(`lp-${ticker}`);
+  const chgEl   = document.getElementById(`lc-${ticker}`);
+  const arsEl   = document.getElementById(`la-${ticker}`);
+  const prevEl  = document.getElementById(`lprev-${ticker}`);
+  if (!priceEl) return;
+
+  const prev    = lastPrices[ticker]?.price;
+  const changed = prev != null && Math.abs(q.price - prev) > 0.005;
+
+  priceEl.textContent = `USD ${fmtUSD(q.price)}`;
+
+  const sign  = q.changePct >= 0 ? '+' : '';
+  const arrow = q.changePct >= 0 ? '▲' : '▼';
+  chgEl.textContent = `${arrow} ${sign}${q.changePct.toFixed(2)}%  (${sign}$${Math.abs(q.change).toFixed(2)} hoy)`;
+  chgEl.className   = `live-chg ${q.changePct >= 0 ? 'cg' : 'cr'}`;
+
+  if (arsEl)  arsEl.textContent  = `≈ ARS ${fmtARS(q.price * CCL)}  (ref. CCL ~$${CCL})`;
+  if (prevEl) prevEl.textContent = `Cierre ant.: USD ${fmtUSD(q.prevClose)}`;
+
+  // Flash the card on change
+  if (changed) {
+    const card = document.querySelector(`.scard[data-ticker="${ticker}"]`);
+    if (card) {
+      card.classList.remove('flash-up','flash-dn');
+      void card.offsetWidth;
+      card.classList.add(q.changePct >= 0 ? 'flash-up' : 'flash-dn');
+    }
+  }
+}
+
+function setLiveDotsState(state) {
+  document.querySelectorAll('.live-dot').forEach(d => {
+    d.className = `live-dot ${state === 'OPEN' ? 'open' : state === 'EXTENDED' ? 'ext' : 'closed'}`;
+  });
+  document.querySelectorAll('.live-lbl').forEach(el => {
+    el.className = `live-lbl ${state === 'OPEN' ? 'open' : state === 'EXTENDED' ? 'ext' : 'closed'}`;
+    el.textContent = state === 'OPEN' ? 'EN VIVO' : state === 'EXTENDED' ? 'FUERA DE HORA' : 'CIERRE';
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   REFRESH LOOP
+═══════════════════════════════════════════════════ */
+async function doRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) btn.classList.add('spinning');
+
+  const { state } = getMarketInfo();
+  updateMarketBar(state);
+  setLiveDotsState(state);
+
+  // Set loading state on boxes
+  document.querySelectorAll('.live-box').forEach(b => b.classList.add('updating'));
+
+  const prices = await fetchPrices();
+
+  if (prices) {
+    lastPrices = prices;
+    ALL_TICKERS.forEach(t => {
+      if (prices[t]) updateCardPrice(t, prices[t]);
+    });
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    const el = document.getElementById('mkt-update-time');
+    if (el) el.textContent = `Actualizado: ${timeStr}`;
+  } else {
+    // Show last known or indicate error
+    document.querySelectorAll('.live-box').forEach(b => b.classList.remove('updating'));
+    ALL_TICKERS.forEach(t => {
+      const chgEl = document.getElementById(`lc-${t}`);
+      if (chgEl && chgEl.textContent === '—') {
+        chgEl.textContent = 'No disponible';
+        chgEl.className = 'live-chg cn';
+      }
+    });
+  }
+
+  document.querySelectorAll('.live-box').forEach(b => b.classList.remove('updating'));
+  if (btn) btn.classList.remove('spinning');
+
+  scheduleNext(state);
+}
+
+function scheduleNext(state) {
+  if (fetchTimer) clearTimeout(fetchTimer);
+  const { interval } = marketStateLabel(state);
+  countdownVal = interval;
+  fetchTimer = setTimeout(doRefresh, interval * 1000);
+
+  // Countdown tick
+  const tick = () => {
+    countdownVal--;
+    const el = document.getElementById('mkt-countdown');
+    if (el) {
+      if (countdownVal <= 0) el.textContent = '—';
+      else if (countdownVal >= 60) el.textContent = `${Math.floor(countdownVal/60)}m ${countdownVal%60}s`;
+      else el.textContent = `${countdownVal}s`;
+    }
+    if (countdownVal > 0) setTimeout(tick, 1000);
+  };
+  tick();
+}
+
+function manualRefresh() {
+  if (fetchTimer) { clearTimeout(fetchTimer); fetchTimer = null; }
+  countdownVal = 0;
+  doRefresh();
+}
+
+/* ═══════════════════════════════════════════════════
+   SPARKLINES
+═══════════════════════════════════════════════════ */
+const _charts = {};
+function genData(trend, vol, n=30) {
+  const d=[100];
+  for(let i=1;i<n;i++) d.push(Math.max(50, d[i-1]+(Math.random()-0.5+trend*.28)*vol));
+  return d;
+}
+function drawSpark(id, trend, vol) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const d = genData(trend,vol);
+  const up = d[d.length-1] >= d[0];
+  const col = up ? '#00e5b0' : '#ff4555';
+  if (_charts[id]) _charts[id].destroy();
+  _charts[id] = new Chart(el, {
+    type:'line',
+    data:{ labels:d.map((_,i)=>i), datasets:[{
+      data:d, borderColor:col, borderWidth:1.8, pointRadius:0, fill:true, tension:0.4,
+      backgroundColor:(ctx)=>{
+        const g=ctx.chart.ctx.createLinearGradient(0,0,0,44);
+        g.addColorStop(0, up?'rgba(0,229,176,.22)':'rgba(255,69,85,.22)');
+        g.addColorStop(1,'rgba(0,0,0,0)');
+        return g;
+      }
+    }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{display:false},y:{display:false}},
+      animation:{duration:500}
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════ */
+const STATUS = {
+  buy:  { cls:'buy',  label:'⬆ COMPRA FUERTE' },
+  hold: { cls:'hold', label:'➡ MANTENER'       },
+  sell: { cls:'sell', label:'⬇ VENTA FUERTE'   }
+};
+
+function renderCard(s, weekShort, sparkId, weekNum) {
+  const st = STATUS[s.status];
+  const rrRaw   = s.target && s.stop ? ((s.target - s.price) / (s.price - s.stop)).toFixed(1) : null;
+  const tgtPct  = s.target ? (((s.target - s.price) / s.price)*100).toFixed(1) : null;
+  const slPct   = s.stop   ? (((s.stop   - s.price) / s.price)*100).toFixed(1) : null;
+
+  const targetsHTML = (s.target && s.stop) ? `
+    <div class="sc-targets">
+      <div class="sc-target-box ${s.status==='sell'?'na':'tp'}">
+        <div class="sc-tgt-lbl">Target 30d</div>
+        <div class="sc-tgt-val g">USD ${fmtUSD(s.target)} <span style="font-size:11px;opacity:.75">(+${tgtPct}%)</span></div>
+      </div>
+      <div class="sc-target-box sl">
+        <div class="sc-tgt-lbl">Stop Loss · R/R ${rrRaw}:1</div>
+        <div class="sc-tgt-val r">USD ${fmtUSD(s.stop)} <span style="font-size:11px;opacity:.75">(${slPct}%)</span></div>
+      </div>
+    </div>` : '';
+
+  const perfRows = [
+    {l:'Semana',v:s.change.week},{l:'1 Mes',v:s.change.month},{l:'1 Año',v:s.change.year}
+  ];
+  const perfHTML = perfRows.map(r => {
+    const na = r.v===null;
+    const c  = na ? 'cna' : (r.v>=0 ? 'cg' : 'cr');
+    const t  = na ? '—' : `${r.v>=0?'+':''}${r.v.toFixed(1)}%`;
+    return `<div class="pc"><div class="pc-l">${r.l}</div><div class="pc-v ${c}">${t}</div></div>`;
+  }).join('');
+
+  const indsHTML = s.inds.map(i =>
+    `<div class="ipill"><span class="il">${i.l}</span><span class="iv ${i.c}">${i.v}</span></div>`
+  ).join('');
+
+  return `
+    <div class="scard st-${s.status}" data-ticker="${s.ticker}">
+      <div class="sc-bar"></div>
+      <div class="sc-bd">
+        <div class="sc-status ${st.cls}">${st.label}</div>
+        <div class="sc-hdr">
+          <div class="sc-id">
+            <div class="sc-logo" style="background:${s.logo};color:${s.tc}">${s.ticker.slice(0,4)}</div>
+            <div class="sc-nm">
+              <h3>${s.ticker} <span class="tag tag-p">CEDEAR</span></h3>
+              <span>${s.name}</span>
+            </div>
+          </div>
+          <span class="week-tag">S${weekNum} · ${weekShort}</span>
+        </div>
+        <div class="sc-since">📅 En cartera desde ${weekShort} · ${s.sector}</div>
+
+        <!-- LIVE PRICE BOX -->
+        <div class="live-box" id="lb-${s.ticker}">
+          <div class="live-indicator">
+            <div class="live-dot closed" ></div>
+            <span class="live-lbl closed">CIERRE</span>
+          </div>
+          <div class="live-top">
+            <div class="live-price-usd" id="lp-${s.ticker}">
+              <span class="skel" style="width:120px;height:22px">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+            </div>
+            <div class="live-chg cn" id="lc-${s.ticker}">—</div>
+          </div>
+          <div class="live-bottom">
+            <div class="live-ars" id="la-${s.ticker}">≈ ARS — (ref. CCL ~$${CCL})</div>
+            <div class="live-prev" id="lprev-${s.ticker}">Cierre ant.: —</div>
+          </div>
+        </div>
+
+        ${targetsHTML}
+        <div class="sc-perf">${perfHTML}</div>
+        <div class="spark"><canvas id="${sparkId}" height="44"></canvas></div>
+        <div class="sc-inds">${indsHTML}</div>
+        <div class="sc-reason ${s.status}">${s.reason}</div>
+      </div>
+    </div>`;
+}
+
+/* Portfolio overview */
+function computeStats() {
+  const latest = {};
+  WEEKS.forEach(w => {
+    w.newPicks.forEach(s => { if(!latest[s.ticker]) latest[s.ticker]={status:s.status}; });
+    w.reEvals.forEach(s => { latest[s.ticker]={status:s.status}; });
+  });
+  const v = Object.values(latest);
+  return { total:v.length, buy:v.filter(x=>x.status==='buy').length,
+           hold:v.filter(x=>x.status==='hold').length, sell:v.filter(x=>x.status==='sell').length };
+}
+
+function renderOverview() {
+  const s = computeStats();
+  document.getElementById('pf-overview-wrap').innerHTML = `
+    <div class="pf-overview">
+      <div class="pf-ov-info">
+        <div class="pf-ov-title">Cartera CEDEARs — Señales Activas</div>
+        <div class="pf-ov-sub">Actualización semanal cada lunes · Precios en tiempo real durante horario NYSE (10:30–17:00 AR)</div>
+      </div>
+      <div class="pf-ov-stats">
+        <div class="pf-stat"><div class="pf-stat-val" style="color:var(--txt)">${s.total}</div><div class="pf-stat-lbl">Posiciones</div></div>
+        <div class="pf-stat"><div class="pf-stat-val col-g">${s.buy}</div><div class="pf-stat-lbl">Compra Fuerte</div></div>
+        <div class="pf-stat"><div class="pf-stat-val col-b">${s.hold}</div><div class="pf-stat-lbl">Mantener</div></div>
+        <div class="pf-stat"><div class="pf-stat-val col-r">${s.sell}</div><div class="pf-stat-lbl">Venta Fuerte</div></div>
+      </div>
+    </div>`;
+}
+
+const sparkQueue = [];
+
+function renderWeeks() {
+  let html = '';
+  WEEKS.forEach(w => {
+    let inner = '';
+
+    if (w.reEvals.length > 0) {
+      inner += `<div class="sub-lbl reeval">🔄 Re-evaluación de picks anteriores</div><div class="sgrid">`;
+      w.reEvals.forEach((s,i) => {
+        const sid = `spark-re-${w.num}-${i}`;
+        inner += renderCard(s, w.short, sid, w.num);
+        sparkQueue.push({id:sid, st:s.st||0.1, sv:s.sv||1.5});
+      });
+      inner += '</div>';
+    } else if (w.num > 1) {
+      inner += `<div class="sub-lbl reeval">🔄 Re-evaluación de picks anteriores</div>
+        <div style="background:rgba(77,166,255,.04);border:1px solid rgba(77,166,255,.12);border-radius:10px;padding:14px 18px;font-size:13px;color:var(--txt2);margin-bottom:16px;">Sin cambios de estado esta semana.</div>`;
+    }
+
+    inner += `<div class="sub-lbl new-picks">✦ ${w.newPicks.length} nuevas incorporaciones</div><div class="sgrid">`;
+    w.newPicks.forEach((s,i) => {
+      const sid = `spark-new-${w.num}-${i}`;
+      inner += renderCard(s, w.short, sid, w.num);
+      sparkQueue.push({id:sid, st:s.st, sv:s.sv});
+    });
+    inner += '</div>';
+
+    let tagHTML = `<span class="tag tag-g">+${w.newPicks.length} Compra Fuerte</span>`;
+    const holds = w.reEvals.filter(r=>r.status==='hold').length;
+    const sells = w.reEvals.filter(r=>r.status==='sell').length;
+    const buys  = w.reEvals.filter(r=>r.status==='buy').length;
+    if (holds) tagHTML += ` <span class="tag tag-b">${holds} pasan a Mantener</span>`;
+    if (sells) tagHTML += ` <span class="tag tag-r">${sells} pasan a Venta Fuerte</span>`;
+    if (buys && w.reEvals.length) tagHTML += ` <span class="tag tag-g">${buys} siguen en Compra</span>`;
+    if (w.num===1) tagHTML = `<span class="tag tag-g">Primera semana · Sin re-evaluaciones</span>`;
+
+    html += `
+      <div class="week-section">
+        <div class="week-hdr">
+          <div class="week-num-badge">SEMANA ${w.num}</div>
+          <div>
+            <div class="week-hdr-date">${w.date}</div>
+          </div>
+          <div class="week-hdr-tags">${tagHTML}</div>
+        </div>
+        ${inner}
+      </div>`;
+  });
+  document.getElementById('weeks-wrap').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════ */
+function toggleMeth() {
+  const b=document.getElementById('mbody'), a=document.getElementById('marrow');
+  a.classList.toggle('open', b.classList.toggle('open'));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderOverview();
+  renderWeeks();
+
+  // Draw sparklines
+  setTimeout(() => sparkQueue.forEach(q => drawSpark(q.id, q.st, q.sv)), 120);
+
+  // Initial market state + first fetch
+  const { state } = getMarketInfo();
+  updateMarketBar(state);
+  doRefresh(); // fetches prices immediately on load
+});
+</script>
+</body>
+</html>
